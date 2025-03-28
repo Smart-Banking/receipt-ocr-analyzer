@@ -1,13 +1,42 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { analyzeReceiptText } from "./openai";
+import { analyzeReceiptText, checkOpenAIKey } from "./openai";
 import { performOcr } from "./ocr";
 import { receiptTextSchema, receiptImageSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // API endpoint за проверка на OpenAI API ключа
+  app.get("/api/check-openai-key", async (_req: Request, res: Response) => {
+    try {
+      // Проверка дали ключът за OpenAI API е конфигуриран
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(400).json({ 
+          isValid: false, 
+          message: "OpenAI API ключът не е конфигуриран. Моля, добавете го в настройките." 
+        });
+      }
+      
+      // Проверка на валидността на ключа
+      const isValid = await checkOpenAIKey();
+      
+      return res.json({ 
+        isValid,
+        message: isValid 
+          ? "OpenAI API ключът е валиден." 
+          : "OpenAI API ключът е невалиден или има проблем с услугата."
+      });
+    } catch (error) {
+      console.error('Error checking OpenAI API key:', error);
+      return res.status(500).json({ 
+        isValid: false, 
+        message: "Грешка при проверка на OpenAI API ключа." 
+      });
+    }
+  });
+  
   // API endpoint for OCR processing
   app.post("/api/ocr", async (req: Request, res: Response) => {
     console.log('==== OCR API ENDPOINT CALLED ====');
@@ -77,35 +106,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // API endpoint for OCR text analysis
+  // API endpoint за анализ на текст от касови бележки
   app.post("/api/analyze-receipt", async (req: Request, res: Response) => {
     try {
-      // Validate request body
-      const validatedData = receiptTextSchema.parse(req.body);
+      console.log('==== ANALYZE RECEIPT API ENDPOINT CALLED ====');
       
-      // Process receipt text with OpenAI
-      const analysisResult = await analyzeReceiptText(validatedData.text);
-      
-      // Store the result in memory
-      await storage.createReceipt({
-        imageUrl: null, // We're not storing the image in this implementation
-        ocrText: validatedData.text,
-        language: validatedData.language,
-        analysisResult
-      });
-      
-      // Return the result
-      res.json({ text: analysisResult });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ error: validationError.message });
-      } else {
-        console.error("Error analyzing receipt:", error);
-        res.status(500).json({ 
-          error: `Failed to analyze receipt: ${error instanceof Error ? error.message : String(error)}` 
+      // Проверка дали OpenAI API ключът е конфигуриран
+      if (!process.env.OPENAI_API_KEY) {
+        console.error('OpenAI API key is not configured');
+        return res.status(400).json({ 
+          error: 'OpenAI API ключът не е конфигуриран. Моля, добавете го в настройките за да използвате функцията за анализ.' 
         });
       }
+      
+      // Валидиране на входните данни
+      let validatedData;
+      try {
+        validatedData = receiptTextSchema.parse(req.body);
+      } catch (validationError) {
+        console.error('Receipt text validation failed:', validationError);
+        if (validationError instanceof ZodError) {
+          const formattedError = fromZodError(validationError);
+          return res.status(400).json({ error: formattedError.message });
+        }
+        return res.status(400).json({ error: 'Невалиден формат на заявката' });
+      }
+      
+      // Логване на заявката за диагностика
+      console.log(`Receipt analysis request received, text length: ${validatedData.text.length}`);
+      console.log(`Language: ${validatedData.language}`);
+      console.log(`Sample text: ${validatedData.text.substring(0, 100)}...`);
+      
+      // Анализиране на текста чрез OpenAI
+      console.log('Calling OpenAI for receipt analysis...');
+      const analysisResult = await analyzeReceiptText(validatedData.text);
+      console.log('Analysis completed successfully');
+      
+      // Запазване на резултата в хранилището
+      try {
+        await storage.createReceipt({
+          imageUrl: null, // Не съхраняваме изображението в тази имплементация
+          ocrText: validatedData.text,
+          language: validatedData.language,
+          analysisResult
+        });
+        console.log('Receipt data stored successfully');
+      } catch (storageError) {
+        // Логваме грешката, но продължаваме, тъй като съхранението не е критично за функционалността
+        console.error('Failed to store receipt data:', storageError);
+      }
+      
+      // Връщане на резултата
+      console.log('Sending analysis response to client');
+      return res.json({ text: analysisResult });
+    } catch (error) {
+      console.error("==== ERROR ANALYZING RECEIPT ====");
+      console.error("Error details:", error);
+      
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ error: validationError.message });
+      } 
+      
+      // Проверка за специфични грешки на OpenAI API
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      if (errorMsg.includes('API key')) {
+        return res.status(401).json({ 
+          error: 'Невалиден OpenAI API ключ. Моля, проверете настройките си.' 
+        });
+      } else if (errorMsg.includes('rate limit')) {
+        return res.status(429).json({ 
+          error: 'Достигнат е лимитът на OpenAI API заявки. Моля, опитайте отново по-късно.' 
+        });
+      }
+      
+      console.error("Stack trace:", error instanceof Error ? error.stack : 'No stack trace available');
+      
+      return res.status(500).json({ 
+        error: `Грешка при анализ на бележката: ${errorMsg}` 
+      });
     }
   });
 
