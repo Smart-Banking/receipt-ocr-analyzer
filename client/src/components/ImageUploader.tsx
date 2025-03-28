@@ -70,7 +70,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             />
             <button 
               onClick={onImageReset}
-              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full w-8 h-8 flex items-center justify-center"
+              className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white p-1 rounded w-8 h-8 flex items-center justify-center shadow-md"
             >
               <X className="h-5 w-5" />
             </button>
