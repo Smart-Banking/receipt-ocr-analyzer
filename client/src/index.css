@@ -9,7 +9,8 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: linear-gradient(to bottom right, #2d3748, #1a202c);
+    background: linear-gradient(140deg, #1e3a8a, #1e293b, #111827);
+    min-height: 100vh;
   }
 }
 
@@ -32,11 +33,31 @@
   /* Стил за контейнери на компоненти */
   .bg-gray-900 {
     @apply shadow-md shadow-gray-900/30 border border-gray-800 !important;
+    background: linear-gradient(to bottom, #344055, #283447) !important;
   }
   
   /* Добавяме по-ярки акценти на важни елементи */
   .text-primary-500 {
     @apply text-blue-400 !important;
     text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+  
+  /* Стил за textarea и други input полета */
+  textarea, select {
+    @apply bg-gray-700/70 border border-gray-600 rounded-md transition-all !important;
+  }
+  
+  textarea:focus, select:focus {
+    @apply outline-none ring-2 ring-blue-500/50 border-gray-500 !important;
+  }
+  
+  /* Стил за изображения */
+  img {
+    @apply rounded-md border border-gray-700 shadow-lg !important;
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  img:hover {
+    transform: scale(1.01);
   }
 }
