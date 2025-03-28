@@ -1,4 +1,4 @@
-import * as Tesseract from 'tesseract.js';
+import { createWorker } from 'tesseract.js';
 import sharp from 'sharp';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -182,33 +182,44 @@ export async function performOcr(imageBase64: string, language: string): Promise
     console.log(`Using Tesseract language: ${tesseractLang}`);
     
     try {
-      // Директно използване на recognize метода от Tesseract
+      // Използване на createWorker за създаване на Tesseract worker
       console.log('Starting OCR with Tesseract...');
       
-      // Конфигурация за логването на прогреса
-      const loggerConfig = {
-        logger: (info: any) => {
-          if (info.status === 'recognizing text') {
-            const progress = Math.floor(info.progress * 100);
+      // Създаване на worker
+      const worker = await createWorker({
+        logger: (m) => { 
+          if (m.status === 'recognizing text') {
+            const progress = Math.floor(m.progress * 100);
             if (progress % 20 === 0) { // Log на всеки 20%
               console.log(`OCR progress: ${progress}%`);
             }
           }
         }
-      };
+      });
       
-      // Изпълнение на OCR
-      const result = await Tesseract.recognize(
-        imageData,
-        tesseractLang,
-        loggerConfig
-      );
+      // Зареждане на езикови данни
+      console.log(`Loading Tesseract language data for: ${tesseractLang}`);
+      await worker.loadLanguage(tesseractLang);
+      await worker.initialize(tesseractLang);
+      
+      // Задаване на PSMS сегментационен режим за по-добри резултати с бележки
+      await worker.setParameters({
+        preserve_interword_spaces: '1',
+        tessedit_pageseg_mode: '6' // Assume uniform block of vertically aligned text
+      });
+      
+      // Изпълнение на OCR разпознаване
+      console.log('Recognizing text...');
+      const { data } = await worker.recognize(imageData);
+      
+      // Освобождаване на ресурсите
+      await worker.terminate();
       
       console.log('OCR completed successfully');
       
       // Извличане на текста от резултата
-      if (result && result.data && result.data.text) {
-        const text = result.data.text.trim();
+      if (data && data.text) {
+        const text = data.text.trim();
         
         // Покажете част от резултата за диагностика
         const textPreview = text.length > 100 
