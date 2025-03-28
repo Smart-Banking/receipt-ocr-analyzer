@@ -20,18 +20,9 @@ export async function performOcr(imageBase64: string, language: string): Promise
     console.log(`Using Tesseract language: ${tesseractLang}`);
     
     console.log('Creating Tesseract worker...');
-    // Using any type to bypass TypeScript errors
+    // Create worker without a custom logger to avoid DOMException errors
     // @ts-ignore
-    const worker = await Tesseract.createWorker({
-      // @ts-ignore
-      logger: (m: any) => {
-        if (m.status === 'recognizing text') {
-          console.log(`OCR Progress: ${Math.floor((m.progress || 0) * 100)}%`);
-        } else {
-          console.log(`OCR Status: ${m.status || 'unknown'}`);
-        }
-      }
-    });
+    const worker = await Tesseract.createWorker();
 
     console.log(`Loading language: ${tesseractLang}`);
     // @ts-ignore
@@ -50,10 +41,14 @@ export async function performOcr(imageBase64: string, language: string): Promise
     await worker.terminate();
     
     // Log first 100 chars of result for debugging
-    console.log(`OCR Result (first 100 chars): ${data.text.substring(0, 100)}...`);
-    
-    // Return extracted text from the image
-    return { text: data.text };
+    if (data && data.text) {
+      console.log(`OCR Result (first 100 chars): ${data.text.substring(0, 100)}...`);
+      // Return extracted text from the image
+      return { text: data.text };
+    } else {
+      console.error('OCR Result is empty or invalid');
+      return { text: '' };
+    }
   } catch (error) {
     console.error('Server OCR Error:', error);
     throw new Error(`OCR processing failed: ${error instanceof Error ? error.message : String(error)}`);
