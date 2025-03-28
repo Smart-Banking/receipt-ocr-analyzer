@@ -10,45 +10,67 @@ import { fromZodError } from "zod-validation-error";
 export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint for OCR processing
   app.post("/api/ocr", async (req: Request, res: Response) => {
+    console.log('==== OCR API ENDPOINT CALLED ====');
     try {
-      // Log request info for debugging (excluding the actual image data)
-      console.log('Received OCR request with language:', req.body.language);
+      // Check if we have a request body
+      if (!req.body) {
+        console.error('No request body received');
+        return res.status(400).json({ error: 'No request body provided' });
+      }
+      
+      // Log request info for debugging
+      console.log('Received OCR request with language:', req.body.language || 'not specified');
       
       // Validate request body
-      const validatedData = receiptImageSchema.parse(req.body);
+      let validatedData;
+      try {
+        validatedData = receiptImageSchema.parse(req.body);
+      } catch (validationError) {
+        console.error('Schema validation failed:', validationError);
+        if (validationError instanceof ZodError) {
+          const formattedError = fromZodError(validationError);
+          return res.status(400).json({ error: formattedError.message });
+        }
+        return res.status(400).json({ error: 'Invalid request format' });
+      }
       
       // Extra validation and debugging for image data
       if (!validatedData.imageBase64) {
-        throw new Error('No image data provided');
+        console.error('No image data provided in validated request');
+        return res.status(400).json({ error: 'No image data provided' });
       }
       
       if (validatedData.imageBase64.length < 100) {
         console.error('Image data suspiciously short:', validatedData.imageBase64);
-        throw new Error('Invalid image data: Too short');
+        return res.status(400).json({ error: 'Invalid image data: Too short' });
       }
       
-      console.log('Image data length:', validatedData.imageBase64.length);
-      console.log('Image data preview:', validatedData.imageBase64.substring(0, 50) + '...');
+      console.log('Image data validation passed:');
+      console.log('- Image data length:', validatedData.imageBase64.length);
+      console.log('- Image data prefix:', validatedData.imageBase64.substring(0, 30) + '...');
+      console.log('- Language:', validatedData.language);
       
       // Perform OCR on the image
+      console.log('Calling OCR function...');
       const ocrResult = await performOcr(validatedData.imageBase64, validatedData.language);
+      console.log('OCR processing completed successfully');
       
       // Return the OCR result
-      res.json({ 
+      const response = { 
         text: ocrResult.text || '',
         language: validatedData.language 
-      });
+      };
+      
+      console.log('Sending OCR response to client');
+      return res.json(response);
     } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        console.error('Validation error:', validationError.message);
-        res.status(400).json({ error: validationError.message });
-      } else {
-        console.error("Error performing OCR:", error);
-        res.status(500).json({ 
-          error: `Failed to perform OCR: ${error instanceof Error ? error.message : String(error)}` 
-        });
-      }
+      console.error("==== ERROR PERFORMING OCR ====");
+      console.error("Error details:", error);
+      console.error("Stack trace:", error instanceof Error ? error.stack : 'No stack trace available');
+      
+      return res.status(500).json({ 
+        error: `Failed to perform OCR: ${error instanceof Error ? error.message : String(error)}` 
+      });
     }
   });
   

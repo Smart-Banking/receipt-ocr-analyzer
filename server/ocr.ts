@@ -1,5 +1,4 @@
 import * as Tesseract from 'tesseract.js';
-import { createWorker } from 'tesseract.js';
 
 // Map UI language codes to Tesseract language codes
 const langMap: Record<string, string> = {
@@ -10,71 +9,60 @@ const langMap: Record<string, string> = {
   'fr': 'fra'
 };
 
+// A simple fallback response for testing
+// This is just so we can test the rest of the application flow while diagnosing OCR issues
 export async function performOcr(imageBase64: string, language: string): Promise<{ text: string }> {
   console.log(`Starting OCR processing with language: ${language}`);
+  
+  // Simple validation
+  if (!imageBase64 || typeof imageBase64 !== 'string') {
+    throw new Error('Invalid image data provided to OCR function');
+  }
+  
   try {
-    console.log('Processing image data...');
+    // Simplified image processing
+    const imageData = imageBase64.startsWith('data:image/') 
+      ? imageBase64 
+      : `data:image/jpeg;base64,${imageBase64}`;
     
-    // Ensure we have valid image data
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      throw new Error('Invalid image data provided to OCR function');
-    }
-    
-    // Remove the data URL prefix if present and prepare the image data
-    let imageDataUrl: string;
-    if (imageBase64.startsWith('data:image/')) {
-      // Already in data URL format
-      imageDataUrl = imageBase64;
-      console.log('Image is already in data URL format');
-    } else {
-      // Assume it's base64 encoded data without the prefix
-      imageDataUrl = `data:image/jpeg;base64,${imageBase64}`;
-      console.log('Added data URL prefix to image');
-    }
-    
-    // Determine language to use
+    // Determine language
     const tesseractLang = langMap[language] || 'bul';
     console.log(`Using Tesseract language: ${tesseractLang}`);
     
-    console.log('Creating Tesseract worker...');
-    // Use explicit import to avoid TypeScript issues
-    const worker = await createWorker();
-
-    try {
-      console.log(`Loading language: ${tesseractLang}`);
-      // @ts-ignore - Tesseract.js types are not fully compatible
-      await worker.loadLanguage(tesseractLang);
-      
-      console.log('Initializing worker...');
-      // @ts-ignore - Tesseract.js types are not fully compatible
-      await worker.initialize(tesseractLang);
-      
-      console.log('Starting text recognition...');
-      // @ts-ignore - Tesseract.js types are not fully compatible
-      const { data } = await worker.recognize(imageDataUrl);
-      
-      console.log('Text recognition completed.');
-      
-      // Log first 100 chars of result for debugging
-      if (data && data.text) {
-        const textPreview = data.text.length > 100 
-          ? `${data.text.substring(0, 100)}...` 
-          : data.text;
-        console.log(`OCR Result (preview): ${textPreview}`);
-        
-        // Return extracted text from the image
-        return { text: data.text };
-      } else {
-        console.error('OCR Result is empty or invalid');
-        return { text: '' };
+    // Using a simpler approach with Tesseract recognize function
+    console.log('Starting OCR with Tesseract...');
+    const result = await Tesseract.recognize(
+      imageData,
+      tesseractLang,
+      {
+        logger: m => {
+          // Only log progress at certain intervals to reduce console spam
+          if (m.status === 'recognizing text' && m.progress && Math.floor(m.progress * 10) % 2 === 0) {
+            console.log(`OCR progress: ${Math.floor(m.progress * 100)}%`);
+          }
+        }
       }
-    } finally {
-      // Ensure worker is terminated even if an error occurs
-      console.log('Terminating Tesseract worker...');
-      await worker.terminate();
+    );
+    
+    console.log('OCR completed successfully');
+    
+    // Return the extracted text
+    if (result && result.data && result.data.text) {
+      const textPreview = result.data.text.length > 100 
+        ? `${result.data.text.substring(0, 100)}...` 
+        : result.data.text;
+      console.log(`OCR Result (preview): ${textPreview}`);
+      
+      return { text: result.data.text };
+    } else {
+      console.warn('OCR Result is empty');
+      return { text: '' };
     }
   } catch (error) {
-    console.error('Server OCR Error:', error);
+    console.error('OCR Error:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    
+    // Return a meaningful error
     throw new Error(`OCR processing failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

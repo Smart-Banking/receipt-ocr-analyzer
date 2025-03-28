@@ -73,10 +73,20 @@ export function useOcr() {
         throw new Error('Сървърът не върна валиден OCR резултат');
       }
     } catch (error) {
-      console.error('OCR Error:', error);
+      console.error('OCR Error:', JSON.stringify(error, null, 2));
       setIsOcrInProgress(false);
       setProgress(0);
-      showMessage(`Грешка при OCR обработката: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      let errorMessage = 'Неизвестна грешка';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      showMessage(`Грешка при OCR обработката: ${errorMessage}`, 'error');
       return null;
     }
   }, [showMessage]);
