@@ -10,13 +10,16 @@ const langMap: Record<string, string> = {
 };
 
 export async function performOcr(imageBase64: string, language: string): Promise<{ text: string }> {
+  console.log(`Starting OCR processing with language: ${language}`);
   try {
     // Remove the data URL prefix if present
     const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
     const imageDataUrl = `data:image/jpeg;base64,${base64Data}`;
     
     const tesseractLang = langMap[language] || 'bul';
+    console.log(`Using Tesseract language: ${tesseractLang}`);
     
+    console.log('Creating Tesseract worker...');
     // Using any type to bypass TypeScript errors
     // @ts-ignore
     const worker = await Tesseract.createWorker({
@@ -24,20 +27,30 @@ export async function performOcr(imageBase64: string, language: string): Promise
       logger: (m: any) => {
         if (m.status === 'recognizing text') {
           console.log(`OCR Progress: ${Math.floor((m.progress || 0) * 100)}%`);
+        } else {
+          console.log(`OCR Status: ${m.status || 'unknown'}`);
         }
       }
     });
 
+    console.log(`Loading language: ${tesseractLang}`);
     // @ts-ignore
     await worker.loadLanguage(tesseractLang);
+    
+    console.log('Initializing worker...');
     // @ts-ignore
     await worker.initialize(tesseractLang);
     
+    console.log('Starting text recognition...');
     // @ts-ignore
     const { data } = await worker.recognize(imageDataUrl);
     
+    console.log('Text recognition completed.');
     // @ts-ignore
     await worker.terminate();
+    
+    // Log first 100 chars of result for debugging
+    console.log(`OCR Result (first 100 chars): ${data.text.substring(0, 100)}...`);
     
     return { text: data.text };
   } catch (error) {
