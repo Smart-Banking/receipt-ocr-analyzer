@@ -144,8 +144,11 @@ export async function performOcr(imageBase64: string, language: string): Promise
     }
     
     // Проверка дали изображението е валидно
+    console.log('Image type check - starts with data:image/:', imageBase64.startsWith('data:image/'));
+    console.log('Image type check - starts with blob:', imageBase64.startsWith('blob:'));
+    
     if (!imageBase64.startsWith('data:image/') && !imageBase64.startsWith('blob:')) {
-      console.error('Invalid image format');
+      console.error('Invalid image format, prefix:', imageBase64.substring(0, 30));
       
       // Връщаме резервно съдържание вместо грешка, за да не блокираме тестването
       return { text: getFallbackText(language) };
@@ -155,10 +158,15 @@ export async function performOcr(imageBase64: string, language: string): Promise
     
     // Преобразувайте blob URL-а ако е необходимо (специален случай)
     let imageData = imageBase64;
+    // Забележка: Временно премахваме тази проверка, за да можем да обработваме изображения от камерата
+    /*
     if (imageBase64.startsWith('blob:')) {
       console.log('Blob URL detected, using fallback image');
       return { text: getFallbackText(language) };
     }
+    */
+    
+    // При blob URLs просто продължаваме с реалното разпознаване
     
     // Оптимизиране на изображението за по-добри OCR резултати
     console.log('Optimizing image...');

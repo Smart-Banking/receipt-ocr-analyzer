@@ -63,14 +63,38 @@ export function useOcr() {
       
       console.log('Тест заявката е успешна, продължаваме с обработката на истинското изображение');
       
+      // Подготовка на изображението за изпращане
+      let processedImageUrl = imageUrl;
+      
+      // Ако имаме blob URL от камерата, трябва да го конвертираме в base64
+      if (imageUrl.startsWith('blob:')) {
+        try {
+          console.log('Конвертиране на blob URL в base64...');
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          
+          const reader = new FileReader();
+          processedImageUrl = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          
+          console.log('Blob URL успешно конвертиран в base64');
+        } catch (error) {
+          console.error('Грешка при конвертиране на blob URL:', error);
+          throw new Error('Не можах да обработя изображението от камерата');
+        }
+      }
+      
       // Истинска заявка с изображението
+      console.log('Изпращане на изображението за OCR обработка...');
       const response = await fetch('/api/ocr', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          imageBase64: imageUrl,
+          imageBase64: processedImageUrl,
           language,
         }),
       });
