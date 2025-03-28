@@ -58,7 +58,7 @@ const AiAnalysisResult: React.FC<AiAnalysisResultProps> = ({
             </span>
             <button 
               onClick={handleCopyResult}
-              className="bg-primary-500 hover:bg-primary-700 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
+              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
             >
               <Copy className="h-5 w-5 mr-2" />
               Копирай

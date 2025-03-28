@@ -48,7 +48,7 @@ const OcrProcessor: React.FC<OcrProcessorProps> = ({
       <button 
         onClick={onStartOcr}
         disabled={!isImageLoaded || isOcrInProgress}
-        className={`w-full bg-primary-500 hover:bg-primary-700 text-white py-2 px-4 rounded flex items-center justify-center transition-colors ${(!isImageLoaded || isOcrInProgress) ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors ${(!isImageLoaded || isOcrInProgress) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <MessageSquare className="h-5 w-5 mr-2" />
         Разпознай текст
