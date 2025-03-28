@@ -50,8 +50,11 @@ export class MemStorage implements IStorage {
   async createReceipt(insertReceipt: InsertReceipt): Promise<Receipt> {
     const id = this.receiptId++;
     const receipt: Receipt = {
-      ...insertReceipt,
       id,
+      imageUrl: insertReceipt.imageUrl || null,
+      ocrText: insertReceipt.ocrText || null,
+      language: insertReceipt.language || null,
+      analysisResult: insertReceipt.analysisResult || null,
       processedAt: new Date()
     };
     
