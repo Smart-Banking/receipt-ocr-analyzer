@@ -8,6 +8,35 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
+    background: linear-gradient(to bottom right, #2d3748, #1a202c);
+  }
+}
+
+@layer components {
+  /* Общ стил за всички бутони в приложението */
+  button {
+    @apply bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors !important;
+  }
+  
+  /* Стил за неактивни бутони */
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed hover:bg-gray-700 !important;
+  }
+  
+  /* Осигуряваме, че при hover ефектът е правилен */
+  button:not(:disabled):hover {
+    @apply bg-gray-600 !important;
+  }
+  
+  /* Стил за контейнери на компоненти */
+  .bg-gray-900 {
+    @apply shadow-md shadow-gray-900/30 border border-gray-800 !important;
+  }
+  
+  /* Добавяме по-ярки акценти на важни елементи */
+  .text-primary-500 {
+    @apply text-blue-400 !important;
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
   }
 }
