@@ -52,6 +52,7 @@ export async function performOcr(imageBase64: string, language: string): Promise
     // Log first 100 chars of result for debugging
     console.log(`OCR Result (first 100 chars): ${data.text.substring(0, 100)}...`);
     
+    // Return extracted text from the image
     return { text: data.text };
   } catch (error) {
     console.error('Server OCR Error:', error);
