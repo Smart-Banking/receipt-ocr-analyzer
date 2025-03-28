@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useStatusMessage } from './useStatusMessage';
 import { OcrResult } from '@/types';
-// Import Tesseract dynamically to avoid type issues
-import * as Tesseract from 'tesseract.js';
+import { apiRequest } from '@/lib/queryClient';
 
 export function useOcr() {
   const [isOcrInProgress, setIsOcrInProgress] = useState(false);
@@ -17,47 +16,45 @@ export function useOcr() {
     }
 
     setIsOcrInProgress(true);
-    setProgress(0);
+    setProgress(10); // Start progress
 
     try {
-      // Map UI language codes to Tesseract language codes
-      const langMap: Record<string, string> = {
-        'bg': 'bul',
-        'en': 'eng',
-        'ru': 'rus',
-        'de': 'deu',
-        'fr': 'fra'
-      };
-
-      const tesseractLang = langMap[language] || 'bul';
+      // Extract the base64 data from the image URL
+      const base64Data = imageUrl.split(',')[1];
       
-      // Create a new worker for each OCR process
-      const worker = await Tesseract.createWorker({
-        // @ts-ignore
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setProgress(Math.floor((m.progress || 0) * 100));
-          }
+      if (!base64Data) {
+        throw new Error('Invalid image format');
+      }
+      
+      // Set an interval to simulate progress since we don't get real-time progress from the server
+      let progressValue = 10;
+      const progressInterval = setInterval(() => {
+        progressValue += 5;
+        if (progressValue > 90) {
+          progressValue = 90; // Cap at 90% until we get the actual result
         }
+        setProgress(progressValue);
+      }, 300);
+      
+      // Make a POST request to the server for OCR processing
+      const response = await apiRequest('/api/ocr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageBase64: imageUrl,
+          language,
+        }),
       });
       
-      // Load language and initialize
-      // @ts-ignore
-      await worker.loadLanguage(tesseractLang);
-      // @ts-ignore
-      await worker.initialize(tesseractLang);
+      // Clear the progress interval
+      clearInterval(progressInterval);
+      setProgress(100);
       
-      // Recognize text
-      // @ts-ignore
-      const { data } = await worker.recognize(imageUrl);
-      
-      // Release resources
-      // @ts-ignore
-      await worker.terminate();
-      
-      const result = {
-        text: data.text,
-        language
+      const result: OcrResult = {
+        text: response.text,
+        language,
       };
       
       setOcrResult(result);
@@ -68,6 +65,7 @@ export function useOcr() {
     } catch (error) {
       console.error('OCR Error:', error);
       setIsOcrInProgress(false);
+      setProgress(0);
       showMessage(`Грешка при OCR обработката: ${error instanceof Error ? error.message : String(error)}`, 'error');
       return null;
     }
