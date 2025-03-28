@@ -15,49 +15,77 @@ export function useOcr() {
       return null;
     }
 
+    // Започваме OCR процеса
     setIsOcrInProgress(true);
-    setProgress(10); // Start progress
+    setProgress(10); // Начален прогрес
+    
+    // Настройваме интервал за симулиране на прогрес
+    let progressValue = 10;
+    const progressInterval = setInterval(() => {
+      progressValue += 5;
+      if (progressValue > 90) {
+        progressValue = 90; // Ограничаваме до 90% докато получим резултат
+      }
+      setProgress(progressValue);
+    }, 300);
 
     try {
-      console.log('Starting OCR with image URL length:', imageUrl.length);
+      console.log('Стартиране на OCR с дължина на изображението:', imageUrl.length);
       
-      // Validate the image data
-      if (!imageUrl.startsWith('data:image/')) {
-        throw new Error('Невалиден формат на изображението');
+      // Основна проверка на данните
+      if (imageUrl.length < 10) {
+        throw new Error('Невалидно изображение');
       }
       
-      // Set an interval to simulate progress since we don't get real-time progress from the server
-      let progressValue = 10;
-      const progressInterval = setInterval(() => {
-        progressValue += 5;
-        if (progressValue > 90) {
-          progressValue = 90; // Cap at 90% until we get the actual result
-        }
-        setProgress(progressValue);
-      }, 300);
+      // Изпращаме заявка към сървъра
+      console.log('Изпращане на OCR заявка към сървъра с език:', language);
       
-      console.log('Sending OCR request to server with language:', language);
+      // Тестова заявка без данни, за диагностика
+      const testResponse = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageBase64: 'test',
+          language,
+        }),
+      });
       
-      // Make a POST request to the server for OCR processing
-      const response = await apiRequest(
-        'POST',
-        '/api/ocr',
-        {
+      if (!testResponse.ok) {
+        console.error('Тест заявката не успя:', await testResponse.text());
+        throw new Error(`Сървърът върна грешка: ${testResponse.status}`);
+      }
+      
+      // Истинска заявка с изображението
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           imageBase64: imageUrl,
           language,
-        }
-      );
+        }),
+      });
       
-      console.log('Received OCR response from server');
+      // Проверка за грешки
+      if (!response.ok) {
+        console.error('OCR заявката не успя:', await response.text());
+        throw new Error(`Сървърът върна грешка: ${response.status}`);
+      }
       
-      // Clear the progress interval
+      console.log('Получихме отговор от OCR сървъра');
+      
+      // Приключваме прогреса
       clearInterval(progressInterval);
       setProgress(100);
       
-      // Parse the response as JSON
+      // Обработваме отговора
       const responseData = await response.json();
+      console.log('Получени данни:', responseData);
       
-      // Check if the parsed response contains text
+      // Проверка на данните
       if (responseData && typeof responseData.text === 'string') {
         const result: OcrResult = {
           text: responseData.text,
@@ -73,11 +101,24 @@ export function useOcr() {
         throw new Error('Сървърът не върна валиден OCR резултат');
       }
     } catch (error) {
-      console.error('OCR Error:', JSON.stringify(error, null, 2));
+      // Изчистваме прогрес индикатора
+      clearInterval(progressInterval);
+      
+      // Детайлно логване на грешки
+      console.error('OCR Error:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      } else {
+        console.error('Non-Error object thrown:', JSON.stringify(error, null, 2));
+      }
+      
+      // Актуализираме състоянието
       setIsOcrInProgress(false);
       setProgress(0);
-      let errorMessage = 'Неизвестна грешка';
       
+      // Форматираме съобщение за грешка
+      let errorMessage = 'Неизвестна грешка';
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'object' && error !== null) {
