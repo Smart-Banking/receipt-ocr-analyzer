@@ -202,10 +202,10 @@ export async function performOcr(imageBase64: string, language: string): Promise
       await worker.loadLanguage(tesseractLang);
       await worker.initialize(tesseractLang);
       
-      // Задаване на PSM сегментационен режим за по-добри резултати с бележки
+      // Задаване на PSMS сегментационен режим за по-добри резултати с бележки
       await worker.setParameters({
         preserve_interword_spaces: '1',
-        tessedit_pageseg_mode: '6' // Assume uniform block of text (PSM value 6 = SINGLE_BLOCK)
+        tessedit_pageseg_mode: '6' // Assume uniform block of vertically aligned text
       });
       
       // Изпълнение на OCR разпознаване

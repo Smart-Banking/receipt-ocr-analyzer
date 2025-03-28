@@ -109,7 +109,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             </button>
             <button 
               onClick={handleUploadClick}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
+              className="flex-1 bg-primary-500 hover:bg-primary-700 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
             >
               <Upload className="h-5 w-5 mr-2" />
               Качване
@@ -129,14 +129,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
           <div className="flex justify-center mt-4 space-x-4">
             <button 
               onClick={handleCameraCapture}
-              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
+              className="bg-primary-500 hover:bg-primary-700 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
             >
               <Camera className="h-5 w-5 mr-2" />
               Снимай
             </button>
             <button 
               onClick={closeCamera}
-              className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
+              className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded flex items-center justify-center transition-colors"
             >
               <X className="h-5 w-5 mr-2" />
               Отказ
