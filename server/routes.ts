@@ -11,20 +11,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint for OCR processing
   app.post("/api/ocr", async (req: Request, res: Response) => {
     try {
+      // Log request info for debugging (excluding the actual image data)
+      console.log('Received OCR request with language:', req.body.language);
+      
       // Validate request body
       const validatedData = receiptImageSchema.parse(req.body);
+      
+      // Extra validation and debugging for image data
+      if (!validatedData.imageBase64) {
+        throw new Error('No image data provided');
+      }
+      
+      if (validatedData.imageBase64.length < 100) {
+        console.error('Image data suspiciously short:', validatedData.imageBase64);
+        throw new Error('Invalid image data: Too short');
+      }
+      
+      console.log('Image data length:', validatedData.imageBase64.length);
+      console.log('Image data preview:', validatedData.imageBase64.substring(0, 50) + '...');
       
       // Perform OCR on the image
       const ocrResult = await performOcr(validatedData.imageBase64, validatedData.language);
       
       // Return the OCR result
       res.json({ 
-        text: ocrResult.text,
+        text: ocrResult.text || '',
         language: validatedData.language 
       });
     } catch (error) {
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
+        console.error('Validation error:', validationError.message);
         res.status(400).json({ error: validationError.message });
       } else {
         console.error("Error performing OCR:", error);

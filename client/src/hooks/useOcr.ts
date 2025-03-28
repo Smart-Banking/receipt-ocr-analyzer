@@ -19,11 +19,11 @@ export function useOcr() {
     setProgress(10); // Start progress
 
     try {
-      // Extract the base64 data from the image URL
-      const base64Data = imageUrl.split(',')[1];
+      console.log('Starting OCR with image URL length:', imageUrl.length);
       
-      if (!base64Data) {
-        throw new Error('Invalid image format');
+      // Validate the image data
+      if (!imageUrl.startsWith('data:image/')) {
+        throw new Error('Невалиден формат на изображението');
       }
       
       // Set an interval to simulate progress since we don't get real-time progress from the server
@@ -36,32 +36,42 @@ export function useOcr() {
         setProgress(progressValue);
       }, 300);
       
+      console.log('Sending OCR request to server with language:', language);
+      
       // Make a POST request to the server for OCR processing
-      const response = await apiRequest('/api/ocr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await apiRequest(
+        'POST',
+        '/api/ocr',
+        {
           imageBase64: imageUrl,
           language,
-        }),
-      });
+        }
+      );
+      
+      console.log('Received OCR response from server');
       
       // Clear the progress interval
       clearInterval(progressInterval);
       setProgress(100);
       
-      const result: OcrResult = {
-        text: response.text,
-        language,
-      };
+      // Parse the response as JSON
+      const responseData = await response.json();
       
-      setOcrResult(result);
-      setIsOcrInProgress(false);
-      showMessage('OCR обработката завърши успешно!', 'success');
-      
-      return result;
+      // Check if the parsed response contains text
+      if (responseData && typeof responseData.text === 'string') {
+        const result: OcrResult = {
+          text: responseData.text,
+          language,
+        };
+        
+        setOcrResult(result);
+        setIsOcrInProgress(false);
+        showMessage('OCR обработката завърши успешно!', 'success');
+        
+        return result;
+      } else {
+        throw new Error('Сървърът не върна валиден OCR резултат');
+      }
     } catch (error) {
       console.error('OCR Error:', error);
       setIsOcrInProgress(false);
